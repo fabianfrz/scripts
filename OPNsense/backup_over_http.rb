@@ -1,10 +1,11 @@
 require 'net/http'
 require 'openssl'
-SERVER_IP = 'your IP'
+require 'nokogiri'
+SERVER_IP = 'YOUR IP'
 VERIFY_MODE = OpenSSL::SSL::VERIFY_NONE
 #VERIFY_MODE = OpenSSL::SSL::VERIFY_PEER
-USERNAME = 'your username'
-PASSWORD = 'your password'
+USERNAME = 'YOUR USER'
+PASSWORD = 'YOUR PASSWORD'
 
 indexpage = URI("https://#{SERVER_IP}/index.php")
 backuppage = URI("https://#{SERVER_IP}/diag_backup.php")
@@ -38,9 +39,9 @@ def dl(uri,method, data)
   end
 end
 d = dl(indexpage,:get,nil)
-csrf_line = d.body.lines.select {|x| x.include? "__opnsense_csrf" }.first
-_, token, tokenvalue = csrf_line.scan(/name="([a-z0-9]+)|value="([a-z0-9]+)/i).map {|x| x.first || x.last }
-
+doc = Nokogiri::HTML(d.body).css('input[type=hidden]').first
+token = doc['name']
+tokenvalue = doc['value']
 
 # do login
 line = "login=1&passwordfld=#{PASSWORD}&usernamefld=#{USERNAME}&#{token}=#{tokenvalue}"
@@ -50,5 +51,5 @@ d = dl(indexpage,:post,line)
 line = "donotbackuprrd=on&download=Download&#{token}=#{tokenvalue}"
 d = dl(backuppage,:post,line)
 
-
 File.open("backup_opnsense.xml", "wb") { |f| f.write(d.body) }
+
